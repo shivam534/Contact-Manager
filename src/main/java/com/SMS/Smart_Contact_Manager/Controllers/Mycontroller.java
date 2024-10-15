@@ -3,6 +3,7 @@ package com.SMS.Smart_Contact_Manager.Controllers;
 
 import com.SMS.Smart_Contact_Manager.Entities.Contact;
 import com.SMS.Smart_Contact_Manager.Entities.User;
+import com.SMS.Smart_Contact_Manager.Exceptions.PasswordException;
 import com.SMS.Smart_Contact_Manager.Service.UserService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,8 +23,7 @@ import java.util.Optional;
 @RequestMapping("/api/user")
 public class Mycontroller {
 
-    @Autowired
-    PasswordEncoder passwordEncoder;
+
 
     @Autowired
     UserService userService;
@@ -36,7 +36,7 @@ public class Mycontroller {
     public String register(@RequestBody User user){
         if(userService.findUser(user.getEmail())!=null)
             return user.getEmail()+" already exist";
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
         return  userService.register(user);
     }
 
@@ -75,6 +75,18 @@ public class Mycontroller {
         return ResponseEntity.ok().body(contacts);
     }
 
+    @PostMapping("/update-password")
+    public ResponseEntity<?> updatePassword(@RequestParam String currentPassword, String newPassword, String confirmPassword) throws PasswordException {
+        try {
+            return userService.updatePassword((String) session.getAttribute("email")
+                    ,currentPassword,newPassword,confirmPassword);
+        }catch (PasswordException e){
+            Map<String,String> er = new HashMap<>();
+            er.put("message",e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(er);
+        }
+
+    }
 
 
 

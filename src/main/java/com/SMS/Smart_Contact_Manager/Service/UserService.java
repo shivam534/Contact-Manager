@@ -2,15 +2,19 @@ package com.SMS.Smart_Contact_Manager.Service;
 
 import com.SMS.Smart_Contact_Manager.Entities.Contact;
 import com.SMS.Smart_Contact_Manager.Entities.User;
+import com.SMS.Smart_Contact_Manager.Exceptions.PasswordException;
 import com.SMS.Smart_Contact_Manager.Repository.ContactRepository;
 import com.SMS.Smart_Contact_Manager.Repository.UserRepository;
 import com.sun.security.auth.UserPrincipal;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -37,10 +41,14 @@ public class UserService {
     @Autowired
     HttpServletResponse response;
 
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
     public String register(User user){
         for (Contact contact : user.getContacts()) {
             contact.setUser(user);  // Set the user reference in each contact
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         userRepository.save(user);
         return "Saved";
     }
@@ -138,6 +146,21 @@ public class UserService {
         user.setAccountNonLocked(!user.isAccountNonLocked());
         userRepository.save(user);
         return user;
+    }
+
+    public ResponseEntity<?> updatePassword(String email, String currentPassword,
+                                            String newPassword, String confirmPassword) throws PasswordException {
+        User user = findUser(email);
+
+        if (user == null) throw new UsernameNotFoundException("User not found");
+        if (!newPassword.equals(confirmPassword)) throw new PasswordException("new and confirm password must be same");
+        if (!passwordEncoder.matches(currentPassword, user.getPassword()))
+            throw new PasswordException("Invalid password");
+        if(newPassword.equals(currentPassword)) throw new PasswordException("Current and old password must not be same");
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+
+       return ResponseEntity.status(HttpStatus.CREATED).body(userRepository.save(user));
     }
 }
 
